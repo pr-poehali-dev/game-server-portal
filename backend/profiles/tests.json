@@ -1,0 +1,16 @@
+{
+  "tests": [
+    {
+      "name": "Get top players",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Get profile by ID",
+      "method": "GET",
+      "path": "/?id=1",
+      "expectedStatus": 200
+    }
+  ]
+}

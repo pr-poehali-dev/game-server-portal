@@ -1,65 +1,104 @@
 import { useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import Navigation from '@/components/Navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import Icon from '@/components/ui/icon';
 
+const API_URL = 'https://functions.poehali.dev/176fdebd-24d7-4b16-b82d-9edbf386d028';
+
+interface Achievement {
+  name: string;
+  description: string;
+  icon_emoji: string;
+  rarity: string;
+}
+
+interface ProfileData {
+  id: number;
+  username: string;
+  email: string;
+  avatar_emoji: string;
+  created_at: string;
+  level: number;
+  rating: number;
+  wins: number;
+  losses: number;
+  total_battles: number;
+  average_damage: number;
+  play_time_hours: number;
+  rank_position: number | null;
+  achievements: Achievement[];
+}
+
 const Profile = () => {
   const { id } = useParams();
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const profiles: Record<string, any> = {
-    '1': {
-      username: 'DarkKnight',
-      avatar: '🏆',
-      level: 99,
-      rating: 2850,
-      wins: 1247,
-      losses: 342,
-      rank: '#1',
-      joinDate: '2023-01-15',
-      stats: [
-        { label: 'Боёв проведено', value: 1589 },
-        { label: 'Винрейт', value: '78.5%' },
-        { label: 'Средний урон', value: '4,250' },
-        { label: 'Время в игре', value: '1,247ч' }
-      ],
-      achievements: [
-        { icon: '🏆', title: 'Легенда', description: 'Достигнут 99 уровень', rarity: 'Легендарное' },
-        { icon: '⚔️', title: 'Воин', description: '1000 побед в бою', rarity: 'Эпическое' },
-        { icon: '🎯', title: 'Снайпер', description: '100 точных попаданий подряд', rarity: 'Редкое' },
-        { icon: '🛡️', title: 'Защитник', description: 'Заблокировано 10,000 урона', rarity: 'Эпическое' },
-        { icon: '⚡', title: 'Молния', description: '10 побед за 10 минут', rarity: 'Редкое' },
-        { icon: '💎', title: 'Коллекционер', description: 'Собраны все предметы', rarity: 'Легендарное' }
-      ]
-    },
-    '2': {
-      username: 'ShadowHunter',
-      avatar: '⚔️',
-      level: 95,
-      rating: 2740,
-      wins: 1089,
-      losses: 398,
-      rank: '#2',
-      joinDate: '2023-02-20',
-      stats: [
-        { label: 'Боёв проведено', value: 1487 },
-        { label: 'Винрейт', value: '73.2%' },
-        { label: 'Средний урон', value: '3,980' },
-        { label: 'Время в игре', value: '1,089ч' }
-      ],
-      achievements: [
-        { icon: '⚔️', title: 'Воин', description: '1000 побед в бою', rarity: 'Эпическое' },
-        { icon: '🎯', title: 'Снайпер', description: '100 точных попаданий подряд', rarity: 'Редкое' },
-        { icon: '🛡️', title: 'Защитник', description: 'Заблокировано 10,000 урона', rarity: 'Эпическое' },
-        { icon: '⚡', title: 'Молния', description: '10 побед за 10 минут', rarity: 'Редкое' }
-      ]
-    }
-  };
+  useEffect(() => {
+    if (!id) return;
+    
+    fetch(`${API_URL}?id=${id}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.profile) {
+          setProfile(data.profile);
+        } else {
+          setError('Профиль не найден');
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to fetch profile:', err);
+        setError('Ошибка загрузки профиля');
+        setLoading(false);
+      });
+  }, [id]);
 
-  const profile = profiles[id || '1'] || profiles['1'];
-  const winrate = (profile.wins / (profile.wins + profile.losses)) * 100;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <main className="pt-32 pb-20">
+          <div className="container mx-auto px-6">
+            <div className="text-center">
+              <p className="text-muted-foreground">Загрузка...</p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (error || !profile) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <main className="pt-32 pb-20">
+          <div className="container mx-auto px-6">
+            <div className="text-center">
+              <p className="text-muted-foreground">{error || 'Профиль не найден'}</p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  const winrate = profile.wins + profile.losses > 0 
+    ? (profile.wins / (profile.wins + profile.losses)) * 100 
+    : 0;
   const nextLevelProgress = ((profile.level % 10) / 10) * 100;
+  
+  const stats = [
+    { label: 'Боёв проведено', value: profile.total_battles },
+    { label: 'Винрейт', value: `${winrate.toFixed(1)}%` },
+    { label: 'Средний урон', value: profile.average_damage.toLocaleString() },
+    { label: 'Время в игре', value: `${profile.play_time_hours}ч` }
+  ];
 
   const getRarityColor = (rarity: string) => {
     const colors: Record<string, string> = {
@@ -81,10 +120,12 @@ const Profile = () => {
               <CardContent className="p-8">
                 <div className="flex flex-col md:flex-row gap-8">
                   <div className="flex flex-col items-center md:items-start gap-4">
-                    <div className="text-8xl">{profile.avatar}</div>
-                    <Badge className="bg-gradient-to-r from-primary to-secondary text-white text-lg px-4 py-1">
-                      {profile.rank}
-                    </Badge>
+                    <div className="text-8xl">{profile.avatar_emoji}</div>
+                    {profile.rank_position && (
+                      <Badge className="bg-gradient-to-r from-primary to-secondary text-white text-lg px-4 py-1">
+                        #{profile.rank_position}
+                      </Badge>
+                    )}
                   </div>
 
                   <div className="flex-1">
@@ -93,7 +134,7 @@ const Profile = () => {
                         <h1 className="text-4xl font-bold mb-2">{profile.username}</h1>
                         <p className="text-muted-foreground flex items-center gap-2">
                           <Icon name="Calendar" size={16} />
-                          Играет с {new Date(profile.joinDate).toLocaleDateString('ru-RU', { 
+                          Играет с {new Date(profile.created_at).toLocaleDateString('ru-RU', { 
                             year: 'numeric', 
                             month: 'long' 
                           })}
@@ -137,7 +178,7 @@ const Profile = () => {
             </Card>
 
             <div className="grid md:grid-cols-2 gap-6 mb-8">
-              {profile.stats.map((stat: any, index: number) => (
+              {stats.map((stat: any, index: number) => (
                 <Card 
                   key={index}
                   className="border-border bg-card animate-fade-in"
@@ -163,29 +204,33 @@ const Profile = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid md:grid-cols-2 gap-4">
-                  {profile.achievements.map((achievement: any, index: number) => (
-                    <Card 
-                      key={index}
-                      className="border-border bg-background hover:border-primary/50 transition-all duration-300"
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-start gap-3">
-                          <div className="text-3xl">{achievement.icon}</div>
-                          <div className="flex-1">
-                            <div className="flex items-start justify-between gap-2 mb-2">
-                              <h3 className="font-semibold">{achievement.title}</h3>
-                              <Badge className={getRarityColor(achievement.rarity)} variant="outline">
-                                {achievement.rarity}
-                              </Badge>
+                {profile.achievements.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">Пока нет достижений</p>
+                ) : (
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {profile.achievements.map((achievement: Achievement, index: number) => (
+                      <Card 
+                        key={index}
+                        className="border-border bg-background hover:border-primary/50 transition-all duration-300"
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="text-3xl">{achievement.icon_emoji}</div>
+                            <div className="flex-1">
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <h3 className="font-semibold">{achievement.name}</h3>
+                                <Badge className={getRarityColor(achievement.rarity)} variant="outline">
+                                  {achievement.rarity}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground">{achievement.description}</p>
                             </div>
-                            <p className="text-sm text-muted-foreground">{achievement.description}</p>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

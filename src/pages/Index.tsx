@@ -1,10 +1,39 @@
 import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import Navigation from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import Icon from '@/components/ui/icon';
 
+const API_URL = 'https://functions.poehali.dev/176fdebd-24d7-4b16-b82d-9edbf386d028';
+
+interface Player {
+  id: number;
+  username: string;
+  avatar_emoji: string;
+  level: number;
+  rating: number;
+  wins: number;
+  losses: number;
+}
+
 const Index = () => {
+  const [topPlayers, setTopPlayers] = useState<Player[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(API_URL)
+      .then(res => res.json())
+      .then(data => {
+        setTopPlayers(data.players || []);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to fetch players:', err);
+        setLoading(false);
+      });
+  }, []);
+
   const features = [
     {
       icon: 'Users',
@@ -26,14 +55,6 @@ const Index = () => {
       title: 'Без лагов',
       description: 'Мощные серверы с ping < 20ms для России и СНГ'
     }
-  ];
-
-  const topPlayers = [
-    { id: '1', username: 'DarkKnight', rating: 2850, level: 99, avatar: '🏆' },
-    { id: '2', username: 'ShadowHunter', rating: 2740, level: 95, avatar: '⚔️' },
-    { id: '3', username: 'MysticMage', rating: 2680, level: 92, avatar: '🔮' },
-    { id: '4', username: 'DragonSlayer', rating: 2620, level: 90, avatar: '🐉' },
-    { id: '5', username: 'PhoenixRider', rating: 2580, level: 88, avatar: '🔥' }
   ];
 
   return (
@@ -106,35 +127,45 @@ const Index = () => {
             </div>
 
             <div className="max-w-2xl mx-auto">
-              {topPlayers.map((player, index) => (
-                <Link to={`/profile/${player.id}`} key={player.id}>
-                  <Card className="mb-3 border-border bg-card hover:border-primary/50 transition-all duration-300 hover:scale-[1.02] animate-fade-in"
-                    style={{ animationDelay: `${index * 0.1}s` }}
-                  >
-                    <CardContent className="p-6">
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-4 flex-1">
-                          <div className="text-2xl font-bold text-muted-foreground w-8">
-                            #{index + 1}
+              {loading ? (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">Загрузка...</p>
+                </div>
+              ) : topPlayers.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">Пока нет игроков в рейтинге</p>
+                </div>
+              ) : (
+                topPlayers.map((player, index) => (
+                  <Link to={`/profile/${player.id}`} key={player.id}>
+                    <Card className="mb-3 border-border bg-card hover:border-primary/50 transition-all duration-300 hover:scale-[1.02] animate-fade-in"
+                      style={{ animationDelay: `${index * 0.1}s` }}
+                    >
+                      <CardContent className="p-6">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-4 flex-1">
+                            <div className="text-2xl font-bold text-muted-foreground w-8">
+                              #{index + 1}
+                            </div>
+                            <div className="text-4xl">{player.avatar_emoji}</div>
+                            <div>
+                              <h3 className="text-lg font-semibold">{player.username}</h3>
+                              <p className="text-sm text-muted-foreground">Уровень {player.level}</p>
+                            </div>
                           </div>
-                          <div className="text-4xl">{player.avatar}</div>
-                          <div>
-                            <h3 className="text-lg font-semibold">{player.username}</h3>
-                            <p className="text-sm text-muted-foreground">Уровень {player.level}</p>
+                          <div className="text-right">
+                            <div className="flex items-center gap-2 text-primary">
+                              <Icon name="Star" size={20} />
+                              <span className="text-2xl font-bold">{player.rating}</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">рейтинг</p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="flex items-center gap-2 text-primary">
-                            <Icon name="Star" size={20} />
-                            <span className="text-2xl font-bold">{player.rating}</span>
-                          </div>
-                          <p className="text-xs text-muted-foreground">рейтинг</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ))
+              )}
             </div>
           </div>
         </section>
